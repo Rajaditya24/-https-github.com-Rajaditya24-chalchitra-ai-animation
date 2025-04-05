@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Color-CHALCHITRA - 2D Animation with AI Integration</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            background: #2c2c2c;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .title-bar {
+            background-color: #333;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            height: calc(100vh - 54px);
+        }
+        .toolbar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #444;
+            padding: 20px;
+            border-radius: 0 5px 5px 0;
+            height: calc(100% - 40px);
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+        }
+        .toolbar button {
+            background: #fff;
+            border: none;
+            padding: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            border-radius: 5px;
+            width: 80px;
+            text-align: center;
+        }
+        .toolbar button.active {
+            background-color: #ddd;
+        }
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            position: relative;
+        }
+        canvas {
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            position: relative;
+            cursor: default;
+            width: 1280px;
+            height: 720px;
+        }
+        canvas.selecting {
+            cursor: crosshair;
+        }
+        .frame-preview-container {
+            margin-top: 10px;
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 10px 0;
+            max-height: 100px;
+        }
+        .frame-preview {
+            border: 1px solid #666;
+            margin-right: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            flex-shrink: 0;
+            height: 60px;
+            width: 100px;
+            background-color: #888;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* Added for absolute positioning of the canvas */
+            overflow: hidden;
+        }
+        .frame-preview canvas {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute; /* Position absolutely within the frame-preview */
+            top: 0;
+            left: 0;
+        }
+        .timeline {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            align-items: center;
+        }
+        .timeline button, .timeline input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+        .timeline input[type="range"] {
+            flex-grow: 1;
+        }
+        #frameNotification {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        #frameNotification.show {
+            opacity: 1;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            width: 200px;
+            background-color: #444;
+            padding: 20px;
+            border-radius: 5px 0 0 5px;
+            color: #fff;
+            gap: 10px;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-section {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .panel-section h3 {
+            font-size: 18px;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .panel-section input[type="file"] {
+            font-size: 12px;
+            padding: 5px;
+            border-radius: 3px;
+            background-color: #fff;
+            color: #333;
+        }
+
+        .panel-section button {
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+        }
+        .panel-section button:hover {
+            background-color: #ddd;
+        }
+
+        #background-image-preview {
+            width: 100%;
+            height: 100px;
+            border: 1px solid #666;
+            margin-top: 5px;
+            border-radius: 3px;
+            overflow: hidden;
+            display: none;
+            background-size: cover;
+            background-position: center;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="title-bar">CHALCHITRA - 2D Animation with AI Integration</div>
+    <div class="container">
+        <div class="toolbar">
+            <button id="brush">🖌️ Pen</button>
+            <button id="eraser">🧽 Eraser</button>
+            <button id="select-erase">✂️ Select Erase</button>
+            <button id="undo">↩️ Back</button>
+            <button id="redo">↪️ Front</button>
+            <button id="onion-skin">🧅 Onion</button>
+            <button id="clear">🗑️ Clear</button>
+            <button id="add-frame">➕ Frame</button>
+        </div>
+        <div class="canvas-container">
+            <canvas id="canvas" width="1280" height="720"></canvas>
+            <div class="frame-preview-container" id="framePreviewContainer"></div>
+            <div class="timeline">
+                <button id="play-stop-button">▶️ Play</button>
+                <input type="range" id="speed" min="10" max="500" value="500">
+                <button id="save">💾 Save</button>
+                <button id="load">📂 Load</button>
+            </div>
+            <div id="frameNotification"></div>
+        </div>
+        <div class="right-panel">
+            <div class="panel-section">
+                <h3>Load Animation Frames</h3>
+                <input type="file" id="start-frame-input" accept="image/*">
+                <input type="file" id="end-frame-input" accept="image/*">
+                <button id="load-animation-frames">Load Frames</button>
+            </div>
+            <div class="panel-section">
+                <h3>Background Options</h3>
+                <input type="file" id="background-input" accept="image/*">
+                <button id="download-background">Download BG</button>
+                <div id="background-image-preview"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        let drawing = false;
+        let history = [];
+        let redoStack = [];
+        let frames = [];
+        let onionSkinEnabled = false;
+        let isPlaying = false;
+        let frameIndex = 0;
+        let animationSpeed = 500;
+        let animationInterval;
+        const playStopButton = document.getElementById("play-stop-button");
+        const frameNotification = document.getElementById("frameNotification");
+        const brushButton = document.getElementById("brush");
+        const eraserButton = document.getElementById("eraser");
+        const selectEraseButton = document.getElementById("select-erase");
+        let currentTool = 'brush';
+        let selectionStart = null;
+        let selectionEnd = null;
+        let selectionBox = null;
+        let selecting = false;
+        const speedInput = document.getElementById("speed");
+        let previousFrameIndex = null;
+        let currentFrameImageData = null; // Store the image data of the current frame
+        let loopTimeout;
+
+        // Get the new elements
+        const startFrameInput = document.getElementById("start-frame-input");
+        const endFrameInput = document.getElementById("end-frame-input");
+        const loadAnimationFramesButton = document.getElementById("load-animation-frames");
+        const backgroundInput = document.getElementById("background-input");
+        const downloadBackgroundButton = document.getElementById("download-background");
+        const backgroundImagePreview = document.getElementById("background-image-preview");
+        let backgroundImage = null;
+
+
+        function resizeCanvas() {
+            const container = document.querySelector(".canvas-container");
+            const desiredWidth = Math.min(1280, container.offsetWidth - 240);
+            const desiredHeight = Math.min(720, window.innerHeight * 0.7);
+
+            canvas.style.width = `${desiredWidth}px`;
+            canvas.style.height = `${desiredHeight}px`;
+
+            redrawCanvas();
+            updateFramePreviews();
+        }
+
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+
+        function startDrawing(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const offsetX = (event.clientX - rect.left) * scaleX;
+            const offsetY = (event.clientY - rect.top) * scaleY;
+
+            if (currentTool === 'brush' || currentTool === 'eraser') {
+                drawing = true;
+                ctx.beginPath();
+                ctx.moveTo(offsetX, offsetY);
+            } else if (currentTool === 'select-erase') {
+                if (!selecting) {
+                    selectionStart = { x: offsetX, y: offsetY };
+                    selecting = true;
+                    canvas.classList.add('selecting');
+                    selectionBox = null;
+                    redrawCanvas();
+                } else {
+                    selectionEnd = { x: offsetX, y: offsetY };
+                    selecting = false;
+                    canvas.classList.remove('selecting');
+                    if (selectionStart && selectionEnd) {
+                        const x = Math.min(selectionStart.x, selectionEnd.x);
+                        const y = Math.min(selectionStart.y, selectionEnd.y);
+                        const width = Math.abs(selectionStart.x - selectionEnd.x);
+                        const height = Math.abs(selectionStart.y - selectionEnd.y);
+                        selectionBox = { x, y, width, height };
+
+                        // Store current canvas state for undo
+                        storeCurrentFrame();
+                        ctx.clearRect(selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
+
+                        selectionStart = null;
+                        selectionEnd = null;
+                        selectionBox = null;
+                        redrawCanvas();
+                    }
+                }
+            }
+        }
+
+        function draw(event) {
+            if (!drawing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const offsetX = (event.clientX - rect.left) * scaleX;
+            const offsetY = (event.clientY - rect.top) * scaleY;
+
+            if (currentTool === 'brush') {
+                ctx.lineTo(offsetX, offsetY);
+                ctx.stroke();
+            } else if (currentTool === 'eraser') {
+                ctx.lineTo(offsetX, offsetY);
+                ctx.stroke();
+            } else if (currentTool === 'select-erase' && selecting && selectionStart) {
+                const currentX = offsetX;
+                const currentY = offsetY;
+                const x = Math.min(selectionStart.x, currentX);
+                const y = Math.min(selectionStart.y, currentY);
+                const width = Math.abs(selectionStart.x - currentX);
+                const height = Math.abs(selectionStart.y - currentY);
+                selectionBox = { x, y, width, height };
+                redrawCanvas();
+            }
+        }
+
+        function stopDrawing() {
+            if (drawing) {
+                drawing = false;
+                ctx.beginPath();
+                // Store the current frame's image data *before* adding to history
+                storeCurrentFrame();
+            }
+        }
+
+        function storeCurrentFrame() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let isDuplicate = false;
+             if (history.length > 0) {
+                const previousImageData = history[history.length - 1];
+                isDuplicate = (
+                    previousImageData.width === imageData.width &&
+                    previousImageData.height === imageData.height &&
+                    previousImageData.data.every((value, index) => value === imageData.data[index])
+                );
+            }
+
+            if (history.length === 0 || !isDuplicate) {
+                history.push(imageData);
+            }
+            redoStack = [];
+            currentFrameImageData = imageData; // Update the stored image data
+        }
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw the background image first if it exists
+            if (backgroundImage) {
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
+
+            // Onion skin drawing
+            if (onionSkinEnabled && frames.length > 0 && frameIndex > 0) {
+                const previousFrame = frames[Math.max(0, frameIndex - 1)];
+                if (previousFrame) {
+                    ctx.globalAlpha = 0.3;
+                    ctx.putImageData(previousFrame, 0, 0);
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+
+            // Draw previous history
+            if (history.length > 0) {
+                const lastState = history[history.length - 1];
+                ctx.putImageData(lastState, 0, 0);
+            }
+
+            // Draw selection box
+            if (currentTool === 'select-erase' && selecting && selectionBox) {
+                ctx.strokeStyle = 'blue';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
+            }
+
+            //draw current frame
+            if (isPlaying && frames.length > 0) {
+                ctx.globalAlpha = 1.0;
+                ctx.putImageData(frames[frameIndex], 0, 0);
+            }
+        }
+
+        brushButton.addEventListener("click", () => {
+            currentTool = 'brush';
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            updateActiveToolButton();
+            canvas.classList.remove('selecting');
+            selectionStart = null;
+            selectionEnd = null;
+            selectionBox = null;
+            selecting = false;
+            redrawCanvas();
+        });
+
+        eraserButton.addEventListener("click", () => {
+            currentTool = 'eraser';
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            updateActiveToolButton();
+            canvas.classList.remove('selecting');
+            selectionStart = null;
+            selectionEnd = null;
+            selectionBox = null;
+            selecting = false;
+            redrawCanvas();
+        });
+
+        selectEraseButton.addEventListener("click", () => {
+            currentTool = 'select-erase';
+            updateActiveToolButton();
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'butt';
+            selecting = false;
+            selectionStart = null;
+            selectionEnd = null;
+            selectionBox = null;
+            redrawCanvas();
+        });
+
+        function updateActiveToolButton() {
+            brushButton.classList.remove('active');
+            eraserButton.classList.remove('active');
+            selectEraseButton.classList.remove('active');
+            document.getElementById(currentTool).classList.add('active');
+        }
+        updateActiveToolButton();
+
+        document.getElementById("undo").addEventListener("click", () => {
+            if (history.length > 1) {
+                redoStack.push(history.pop());
+                ctx.putImageData(history[history.length - 1], 0, 0);
+                redrawCanvas();
+            } else if (history.length === 1) {
+                redoStack.push(history.pop());
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas();
+            }
+        });
+
+        document.getElementById("redo").addEventListener("click", () => {
+            if (redoStack.length > 0) {
+                const redoState = redoStack.pop();
+                history.push(redoState);
+                ctx.putImageData(redoState, 0, 0);
+                redrawCanvas();
+            }
+        });
+
+        document.getElementById("onion-skin").addEventListener("click", () => {
+            onionSkinEnabled = !onionSkinEnabled;
+            redrawCanvas();
+        });
+
+        document.getElementById("clear").addEventListener("click", () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            history = [];
+            redoStack = [];
+            frames = [];
+            currentFrameImageData = null;
+            updateFramePreviews();
+            // Clear the background image as well
+            backgroundImage = null;
+            backgroundImagePreview.style.display = 'none';
+            backgroundImagePreview.style.backgroundImage = '';
+            selectionStart = null;
+            selectionEnd = null;
+            selectionBox = null;
+            selecting = false;
+            canvas.classList.remove('selecting');
+        });
+
+        document.getElementById("add-frame").addEventListener("click", () => {
+            // Store the current canvas state as a new frame
+            const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            frames.push(currentFrame);
+            history.push(currentFrame); //keep current frame in history
+            redoStack = [];
+            frameIndex = frames.length - 1; // Update frame index
+            updateFramePreviews();
+            showFrameNotification("Frame added!");
+            redrawCanvas(); // Make sure to redraw the canvas to show the current frame
+        });
+
+
+
+        function showFrameNotification(message) {
+            frameNotification.textContent = message;
+            frameNotification.classList.add("show");
+            setTimeout(() => {
+                frameNotification.classList.remove("show");
+            }, 2000);
+        }
+
+        function playAnimationFrame() {
+            if (!isPlaying || frames.length === 0) {
+                clearTimeout(loopTimeout);
+                isPlaying = false;
+                playStopButton.textContent = "▶️ Play";
+                previousFrameIndex = null;
+                frameIndex = 0; // Reset frame index to 0 when stopped.
+                if (frames.length > 0) {
+                   ctx.putImageData(frames[frames.length-1], 0, 0);
+                }
+                return;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+            ctx.putImageData(frames[frameIndex], 0, 0);
+            frameIndex = (frameIndex + 1) % frames.length; // Loop through frames
+            loopTimeout = setTimeout(playAnimationFrame, animationSpeed);
+        }
+
+        playStopButton.addEventListener("click", () => {
+            if (isPlaying) {
+                isPlaying = false;
+                clearTimeout(animationInterval);
+                playStopButton.textContent = "▶️ Play";
+                previousFrameIndex = null;
+                frameIndex = 0;
+                if (frames.length > 0) {
+                    ctx.putImageData(frames[frames.length - 1], 0, 0);
+                }
+            } else {
+                if (frames.length === 0) return;
+                isPlaying = true;
+                frameIndex = 0;
+                playStopButton.textContent = "⏹️ Stop";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.putImageData(frames[0], 0, 0);
+                clearTimeout(animationInterval);
+                animationInterval = setTimeout(playAnimationFrame, animationSpeed);
+            }
+        });
+
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("mouseout", stopDrawing);
+
+        function updateFramePreviews() {
+            const framePreviewContainer = document.getElementById("framePreviewContainer");
+            framePreviewContainer.innerHTML = "";
+            frames.forEach((frameData, index) => {
+                const previewDiv = document.createElement("div");
+                previewDiv.classList.add("frame-preview");
+
+                const frameCanvas = document.createElement('canvas');
+                frameCanvas.width = 100;
+                frameCanvas.height = 60;
+                const frameCtx = frameCanvas.getContext('2d');
+                frameCtx.putImageData(frameData, 0, 0, 0, 0, 100, 60);
+
+                previewDiv.appendChild(frameCanvas);
+                previewDiv.addEventListener("click", () => {
+                    ctx.putImageData(frameData, 0, 0);
+                    frameIndex = index;
+                    isPlaying = false;
+                    clearTimeout(animationInterval);
+                    playStopButton.textContent = "▶️ Play";
+                });
+                framePreviewContainer.appendChild(previewDiv);
+            });
+            if (isPlaying && frames.length > 0) {
+                clearTimeout(animationInterval);
+                animationInterval = setTimeout(playAnimationFrame, animationSpeed);
+            }
+        }
+
+        speedInput.addEventListener("input", () => {
+            animationSpeed = parseInt(speedInput.value);
+            if (isPlaying && frames.length > 0) {
+                clearTimeout(animationInterval);
+                animationInterval = setTimeout(playAnimationFrame, animationSpeed);
+            }
+        });
+
+        document.getElementById("save").addEventListener("click", () => {
+            if (frames.length === 0) {
+                alert("No frames to save!");
+                return;
+            }
+            const data = {
+                width: canvas.width,
+                height: canvas.height,
+                frames: frames,
+            };
+            const jsonData = JSON.stringify(data);
+            const blob = new Blob([jsonData], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "animation.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById("load").addEventListener("click", () => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".json";
+            input.onchange = (event) => {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const jsonData = JSON.parse(event.target.result);
+                        if (jsonData && jsonData.width && jsonData.height && jsonData.frames) {
+                            history = [];
+                            redoStack = [];
+                            frames = [];
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            // Clear the background image when a new animation is loaded
+                            backgroundImage = null;
+                            backgroundImagePreview.style.display = 'none';
+                            backgroundImagePreview.style.backgroundImage = '';
+
+                            if (jsonData.frames && Array.isArray(jsonData.frames)) {
+                                frames = jsonData.frames;
+                                if (frames.length > 0) {
+                                    ctx.putImageData(frames[0], 0, 0);
+                                }
+                            }
+                            updateFramePreviews();
+                            showFrameNotification("Animation loaded!");
+                        } else {
+                            alert("Invalid file format. Please uploada valid .json animation file.");
+                        }
+                    } catch (error) {
+                        console.error("Error parsing JSON:", error);
+                        alert("Error parsing JSON.  The file may be corrupted.");
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        // Load Animation FramesButton
+        loadAnimationFramesButton.addEventListener("click", () => {
+            const startFile = startFrameInput.files[0];
+            const endFile = endFrameInput.files[0];
+
+            if (!startFile || !endFile) {
+                alert("Please select both a start frame and an end frame.");
+                return;
+            }
+
+            const startReader = new FileReader();
+            const endReader = new FileReader();
+
+            startReader.onload = (startEvent) => {
+                const startImage = new Image();
+                startImage.onload = () => {
+                    endReader.onload = (endEvent) => {
+                        const endImage = new Image();
+                        endImage.onload = () => {
+                            // Clear existing frames
+                            frames = [];
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            history = [];
+                            redoStack = [];
+
+                            // Draw the start and end frames on the canvas
+                            ctx.drawImage(startImage, 0, 0, canvas.width, canvas.height);
+                            frames.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+
+                            ctx.drawImage(endImage, 0, 0, canvas.width, canvas.height);
+                            frames.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                            updateFramePreviews();
+                            showFrameNotification("Start and End frames loaded!");
+
+                            // Clear the input fields
+                            startFrameInput.value = '';
+                            endFrameInput.value = '';
+                        }
+                        endImage.src = endEvent.target.result;
+                    }
+                    endReader.readAsDataURL(endFile);
+                }
+                startImage.src = startEvent.target.result;
+            }
+            startReader.readAsDataURL(startFile);
+        });
+
+        // Background Image Upload
+        backgroundInput.addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    backgroundImage = img;
+                    backgroundImagePreview.style.backgroundImage = `url(${e.target.result})`;
+                    backgroundImagePreview.style.display = 'block';
+                    redrawCanvas();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Download Background Image
+        downloadBackgroundButton.addEventListener("click", () => {
+            if (!backgroundImage) {
+                alert("No background image to download!");
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = backgroundImage.width;
+            canvas.height = backgroundImage.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(backgroundImage, 0, 0);
+
+            const dataURL = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = 'background.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        // Add this block to create an initial frame on load
+        window.onload = () => {
+            const initialFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            frames.push(initialFrame);
+            history.push(initialFrame);
+            updateFramePreviews();
+            // Set the initial tool to 'brush'
+            currentTool = 'brush';
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            updateActiveToolButton();
+        }
+
+    </script>
+</body>
+</html>
