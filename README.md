@@ -1,1 +1,1 @@
-# Chalchitra AI Animation
+# Chalchitra - AI Animation
