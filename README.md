@@ -1,1 +1,1 @@
-# -https-github.com-Rajaditya24-chalchitra-ai-animation
+# Rajaditya24-chalchitra-ai-animation
